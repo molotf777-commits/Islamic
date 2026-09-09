@@ -7,6 +7,19 @@ import json
 from typing import Optional
 import aiohttp
 
+# ✅ استيراد من config
+from config import (
+    COLOR_MAIN,
+    QURAN_IMAGE,
+    QURAN_CONTROL_CHANNEL_ID,
+    QURAN_VOICE_CHANNEL_ID,
+    FOOTER_TEXT,
+    FFMPEG_OPTIONS,
+    RADIO_STATIONS,
+    RECITATIONS,
+    SURAH_NAMES
+)
+
 # ✅ Enable opus for voice
 try:
     import nacl
@@ -66,123 +79,22 @@ class QuranRadio(commands.Cog):
         self.guild_id = None
         self.retry_count = 0
         self.max_retries = 3
-        self.current_mode = "recitation"  # "recitation" or "radio"
+        self.current_mode = "recitation"
         self.current_radio = "cairo"
         self.current_surah = 1
         self.current_reciter = "minsh1387"
-        self.control_channel_id = 1471987630399819908
-        self.voice_channel_target_id = 1471987630399819908
+        self.control_channel_id = QURAN_CONTROL_CHANNEL_ID
+        self.voice_channel_target_id = QURAN_VOICE_CHANNEL_ID
         self.control_message_id = None
         self.current_embed_message = None
-        self.is_radio_playing = False  # متغير جديد لتتبع حالة الإذاعة
+        self.is_radio_playing = False
         
-        # ✅ FFmpeg options for stability
-        self.ffmpeg_options = {
-            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -vn',
-            'options': '-b:a 128k'
-        }
+        self.ffmpeg_options = FFMPEG_OPTIONS
+        self.radio_stations = RADIO_STATIONS
+        self.recitations = RECITATIONS
+        self.surah_names = SURAH_NAMES
+        self.control_image = QURAN_IMAGE
         
-        # ✅ الإذاعات
-        self.radio_stations = {
-            "cairo": {
-                "id": "cairo",
-                "name": "📻 إذاعة القرآن الكريم - القاهرة",
-                "emoji": "📻",
-                "url": "https://stream.radiojar.com/8s5u5tpdtwzuv",
-                "img": "https://i1.sndcdn.com/artworks-000096282703-s9wldh-t200x200.jpg"
-            },
-            "saudi": {
-                "id": "saudi",
-                "name": "📻 إذاعة القرآن الكريم - السعودية",
-                "emoji": "📻",
-                "url": "https://n12.radiojar.com/0tpy1h0kxtzuv",
-                "img": "https://i1.sndcdn.com/artworks-000096282703-s9wldh-t200x200.jpg"
-            }
-        }
-        
-        # ✅ قائمة التلاوات (القُراء)
-        self.recitations = {
-            "minsh1387": {
-                "id": "minsh1387",
-                "name": "🕌 محمد صديق المنشاوي - 1387 هـ",
-                "emoji": "🕌",
-                "base_url": "https://server10.mp3quran.net/minsh1387/",
-                "img": "https://i1.sndcdn.com/artworks-000096282703-s9wldh-t200x200.jpg",
-                "total_surahs": 114
-            },
-            "yasser": {
-                "id": "yasser",
-                "name": "🕌 ياسر الدوسري",
-                "emoji": "🕌",
-                "base_url": "https://server11.mp3quran.net/yasser/",
-                "img": "https://i1.sndcdn.com/artworks-000096282703-s9wldh-t200x200.jpg",
-                "total_surahs": 114
-            },
-            "maher": {
-                "id": "maher",
-                "name": "🕌 ماهر المعيقلي",
-                "emoji": "🕌",
-                "base_url": "https://server12.mp3quran.net/maher/",
-                "img": "https://i1.sndcdn.com/artworks-000096282703-s9wldh-t200x200.jpg",
-                "total_surahs": 114
-            },
-            "basit": {
-                "id": "basit",
-                "name": "🕌 عبد الباسط عبد الصمد",
-                "emoji": "🕌",
-                "base_url": "https://server7.mp3quran.net/basit/",
-                "img": "https://i1.sndcdn.com/artworks-000096282703-s9wldh-t200x200.jpg",
-                "total_surahs": 114
-            },
-            "lhdan": {
-                "id": "lhdan",
-                "name": "🕌 محمد اللحيدان",
-                "emoji": "🕌",
-                "base_url": "https://server8.mp3quran.net/lhdan/",
-                "img": "https://i1.sndcdn.com/artworks-000096282703-s9wldh-t200x200.jpg",
-                "total_surahs": 114
-            },
-            "islam": {
-                "id": "islam",
-                "name": "🕌 إسلام صبحي",
-                "emoji": "🕌",
-                "base_url": "https://server14.mp3quran.net/islam/Rewayat-Hafs-A-n-Assem/",
-                "img": "https://i1.sndcdn.com/artworks-000096282703-s9wldh-t200x200.jpg",
-                "total_surahs": 114
-            },
-            "ayyoub": {
-                "id": "ayyoub",
-                "name": "🕌 محمد أيوب",
-                "emoji": "🕌",
-                "base_url": "https://server16.mp3quran.net/ayyoub2/Rewayat-Hafs-A-n-Assem/",
-                "img": "https://i1.sndcdn.com/artworks-000096282703-s9wldh-t200x200.jpg",
-                "total_surahs": 114
-            }
-        }
-        
-        # ✅ أسماء السور
-        self.surah_names = [
-            "الفاتحة", "البقرة", "آل عمران", "النساء", "المائدة", "الأنعام", "الأعراف", "الأنفال", "التوبة", "يونس",
-            "هود", "يوسف", "الرعد", "إبراهيم", "الحجر", "النحل", "الإسراء", "الكهف", "مريم", "طه",
-            "الأنبياء", "الحج", "المؤمنون", "النور", "الفرقان", "الشعراء", "النمل", "القصص", "العنكبوت", "الروم",
-            "لقمان", "السجدة", "الأحزاب", "سبأ", "فاطر", "يس", "الصافات", "ص", "الزمر", "غافر",
-            "فصلت", "الشورى", "الزخرف", "الدخان", "الجاثية", "الأحقاف", "محمد", "الفتح", "الحجرات", "ق",
-            "الذاريات", "الطور", "النجم", "القمر", "الرحمن", "الواقعة", "الحديد", "المجادلة", "الحشر", "الممتحنة",
-            "الصف", "الجمعة", "المنافقون", "التغابن", "الطلاق", "التحريم", "الملك", "القلم", "الحاقة", "المعارج",
-            "نوح", "الجن", "المزمل", "المدثر", "القيامة", "الإنسان", "المرسلات", "النبأ", "النازعات", "عبس",
-            "التكوير", "الانفطار", "المطففين", "الانشقاق", "البروج", "الطارق", "الأعلى", "الغاشية", "الفجر", "البلد",
-            "الشمس", "الليل", "الضحى", "الشرح", "التين", "العلق", "القدر", "البينة", "الزلزلة", "العاديات",
-            "القارعة", "التكاثر", "العصر", "الهمزة", "الفيل", "قريش", "الماعون", "الكوثر", "الكافرون", "النصر",
-            "المسد", "الإخلاص", "الفلق", "الناس"
-        ]
-        
-        # ✅ صورة لوحة التحكم
-        self.control_image = "https://cdn.discordapp.com/attachments/1462058133835747381/1544855500066131998/ChatGPT_Image_Sep_3_2026_02_42_59_AM.png?ex=6a9a064d&is=6a98b4cd&hm=9a8b3f482de20c29767b5ca9efacf041a3b511dd90845cd868ca92fc3cbba851&"
-        
-        # ✅ ID المطور
-        self.developer_id = 726776467371065407
-        
-        # ✅ تحميل الحالة السابقة
         self.load_state()
 
     def save_state(self):
@@ -209,33 +121,28 @@ class QuranRadio(commands.Cog):
             self.control_message_id = state.get("control_message_id", None)
             print(f"✅ Loaded state: {state}")
 
+    async def get_server_icon(self):
+        """جلب صورة السيرفر"""
+        guild = self.bot.guilds[0] if self.bot.guilds else None
+        if guild and guild.icon:
+            return guild.icon.url
+        return None
+
     async def create_control_embed(self, interaction: discord.Interaction = None):
         """إنشاء لوحة التحكم مع الصورة"""
         embed = discord.Embed(
             title="🌙 اختر الشيخ أو الإذاعة من القائمة أدناه",
-            color=0xFF0000
+            color=COLOR_MAIN
         )
         
         embed.set_image(url=self.control_image)
         
-        if interaction:
-            guild = interaction.guild
-        else:
-            guild = self.bot.guilds[0] if self.bot.guilds else None
-        
-        developer = None
-        if guild:
-            developer = guild.get_member(self.developer_id)
-        
-        dev_avatar = None
-        if developer and developer.avatar:
-            dev_avatar = developer.avatar.url
-        elif developer and developer.default_avatar:
-            dev_avatar = developer.default_avatar.url
+        # جلب صورة السيرفر
+        server_icon = await self.get_server_icon()
         
         embed.set_footer(
-            text="Copyright © Full Red 2026 | @MOLOTOF 👑",
-            icon_url=dev_avatar
+            text=FOOTER_TEXT,
+            icon_url=server_icon  # ✅ صورة السيرفر
         )
         
         return embed
@@ -266,12 +173,11 @@ class QuranRadio(commands.Cog):
         return None
 
     async def send_control_panel(self, channel, interaction: discord.Interaction = None):
-        """إرسال أو تحديث لوحة التحكم (بدون أزرار ⏮️، ▶️، ⏭️)"""
+        """إرسال أو تحديث لوحة التحكم"""
         embed = await self.create_control_embed(interaction)
         
         view = discord.ui.View(timeout=None)
         
-        # ✅ Select Menu بالخيارات المباشرة بدون فواصل
         main_select = discord.ui.Select(
             placeholder="📌 اختر الشيخ أو الإذاعة...",
             min_values=1,
@@ -279,19 +185,15 @@ class QuranRadio(commands.Cog):
             custom_id="main_select"
         )
         
-        # 1. إذاعة القاهرة
-        main_select.add_option(
-            label="إذاعة القرآن الكريم - القاهرة",
-            value="radio_cairo",
-            emoji="📻"
-        )
-        # 2. إذاعة السعودية
-        main_select.add_option(
-            label="إذاعة القرآن الكريم - السعودية",
-            value="radio_saudi",
-            emoji="📻"
-        )
-        # 3. القراء
+        # الإذاعات
+        for radio_id, radio in self.radio_stations.items():
+            main_select.add_option(
+                label=radio["name"],
+                value=f"radio_{radio_id}",
+                emoji=radio["emoji"]
+            )
+        
+        # القراء
         for reciter_id, reciter in self.recitations.items():
             clean_name = reciter["name"].replace("🕌 ", "")
             main_select.add_option(
@@ -333,10 +235,9 @@ class QuranRadio(commands.Cog):
         if not radio:
             return
         
-        # ✅ تحديث الحالة
         self.current_radio = radio_id
         self.current_mode = "radio"
-        self.is_radio_playing = True  # ✅ علامة أن الإذاعة شغالة
+        self.is_radio_playing = True
         
         if voice_client.is_playing():
             voice_client.stop()
@@ -377,7 +278,6 @@ class QuranRadio(commands.Cog):
         if not voice_client or not voice_client.is_connected():
             return
         
-        # ✅ إلغاء حالة الإذاعة
         self.is_radio_playing = False
         
         if reciter_id and reciter_id in self.recitations:
@@ -408,7 +308,6 @@ class QuranRadio(commands.Cog):
                 else:
                     self.is_playing = False
                     self.save_state()
-                    # ✅ تشغيل السورة التالية فقط إذا كنا في وضع التلاوة وليس الإذاعة
                     if self.current_mode == "recitation" and not self.is_radio_playing:
                         asyncio.run_coroutine_threadsafe(
                             self.auto_next_surah(interaction),
@@ -430,7 +329,6 @@ class QuranRadio(commands.Cog):
 
     async def auto_next_surah(self, interaction: discord.Interaction = None):
         """تشغيل السورة التالية تلقائياً"""
-        # ✅ التحقق من أننا في وضع التلاوة وليس الإذاعة
         if self.current_mode != "recitation" or self.is_radio_playing:
             return
         
@@ -547,4 +445,4 @@ class QuranRadio(commands.Cog):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(QuranRadio(bot))
-    print("✅ Quran Radio loaded with Select Menu only successfully!")
+    print("✅ Quran Radio loaded successfully!")
