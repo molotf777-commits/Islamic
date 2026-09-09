@@ -40,7 +40,18 @@ class Azkar(commands.Cog):
 
     def get_azkar_list(self):
         # ... القائمة الطويلة (نفسها)
-        return [ ... ]
+        return [
+            "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ، سُبْحَانَ اللَّهِ الْعَظِيمِ.",
+            "لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ.",
+            # ... باقي الأذكار
+        ]
+
+    async def get_server_icon(self):
+        """جلب صورة السيرفر"""
+        guild = self.bot.guilds[0] if self.bot.guilds else None
+        if guild and guild.icon:
+            return guild.icon.url
+        return None
 
     async def send_zekr_embed(self, target):
         zekr = random.choice(self.get_azkar_list())
@@ -48,11 +59,14 @@ class Azkar(commands.Cog):
         embed = discord.Embed(
             title="عطر فمك بذكر الله 📿",
             description=f"**• {zekr}**",
-            color=COLOR_MAIN  # ✅ من config
+            color=COLOR_MAIN
         )
         
-        embed.set_image(url=AZKAR_IMAGE)  # ✅ من config
-        embed.set_footer(text=FOOTER_TEXT)  # ✅ من config
+        embed.set_image(url=AZKAR_IMAGE)
+        
+        # جلب صورة السيرفر
+        server_icon = await self.get_server_icon()
+        embed.set_footer(text=FOOTER_TEXT, icon_url=server_icon)
 
         message = await target.send(embed=embed)
 
@@ -71,9 +85,9 @@ class Azkar(commands.Cog):
     async def test_azkar_cmd(self, ctx):
         await self.send_zekr_embed(ctx.channel)
 
-    @tasks.loop(minutes=AZKAR_INTERVAL)  # ✅ من config
+    @tasks.loop(minutes=AZKAR_INTERVAL)
     async def auto_azkar(self):
-        channel_id = AZKAR_CHANNEL_ID  # ✅ من config
+        channel_id = AZKAR_CHANNEL_ID
         channel = self.bot.get_channel(channel_id)
 
         if channel is None:
@@ -97,7 +111,7 @@ class Azkar(commands.Cog):
         if last_time:
             now = datetime.datetime.now(datetime.timezone.utc)
             elapsed_seconds = (now - last_time).total_seconds()
-            interval_seconds = AZKAR_INTERVAL * 60  # ✅ من config
+            interval_seconds = AZKAR_INTERVAL * 60
             
             if elapsed_seconds < interval_seconds:
                 remaining_seconds = interval_seconds - elapsed_seconds
